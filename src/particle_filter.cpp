@@ -133,32 +133,37 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     
     double x_o, y_o;
     double x_m, y_m;
-    vector<LandmarkObs> landmarks;
-    for (int i = 0; i < observations.size(); ++i) {
-      x_o = observations[i].x;
-      y_o = observations[i].y;
+    for (int j = 0; j < observations.size(); ++j) {
+      x_o = observations[j].x;
+      y_o = observations[j].y;
       //transform each observation marker from the particle's coordinates to the map's coordinates
       x_m = x_p + x_o * cos(yaw_p) - y_o * sin(yaw_p);
       y_m = y_p + x_o * sin(yaw_p) + y_o * cos(yaw_p);
-      
-      //select landmarks that are in sensor_range
-      for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
-        int id_i = map_landmarks.landmark_list[j].id_i;
-        float x_f = map_landmarks.landmark_list[j].x_f;
-        float y_f = map_landmarks.landmark_list[j].y_f;
+      observations[j].x = x_m;
+      observations[j].y = y_m;
+    }
+
+    //select landmarks that are in sensor_range
+    vector<LandmarkObs> candidate_landmarks;
+    for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
+      int id_i = map_landmarks.landmark_list[j].id_i;
+      float x_f = map_landmarks.landmark_list[j].x_f;
+      float y_f = map_landmarks.landmark_list[j].y_f;
+      for (int k = 0; k < observations.size(); ++k) {
+        x_m = observations[k].x;
+        y_m = observations[k].y;
         if (dist(x_m, y_m, x_f, y_f) <= sensor_range) {
           LandmarkObs landmark;
           landmark.id = id_i;
           landmark.x = x_f;
           landmark.y = y_f;
-          landmarks.push_back(landmark);
+          candidate_landmarks.push_back(landmark);
+          break;
         }
       }
-      observations[i].x = x_m;
-      observations[i].y = y_m;
     }
     
-    dataAssociation(landmarks, observations);
+    dataAssociation(candidate_landmarks, observations);
     // update weights
     // The particles final weight will be calculated as the product of each measurement's Multivariate-Gaussian probability.
     double prob;
