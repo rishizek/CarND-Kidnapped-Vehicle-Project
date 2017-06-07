@@ -149,17 +149,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       int id_i = map_landmarks.landmark_list[j].id_i;
       float x_f = map_landmarks.landmark_list[j].x_f;
       float y_f = map_landmarks.landmark_list[j].y_f;
-      for (int k = 0; k < observations.size(); ++k) {
-        x_m = observations[k].x;
-        y_m = observations[k].y;
-        if (dist(x_m, y_m, x_f, y_f) <= sensor_range) {
-          LandmarkObs landmark;
-          landmark.id = id_i;
-          landmark.x = x_f;
-          landmark.y = y_f;
-          candidate_landmarks.push_back(landmark);
-          break;
-        }
+      if (dist(x_p, y_p, x_f, y_f) <= sensor_range) {
+        LandmarkObs landmark;
+        landmark.id = id_i;
+        landmark.x = x_f;
+        landmark.y = y_f;
+        candidate_landmarks.push_back(landmark);
       }
     }
     
@@ -173,17 +168,32 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     vector<int> associations;
     vector<double> sense_x;
     vector<double> sense_y;
-    for (int i = 0; i < observations.size(); ++i) {
-      LandmarkObs obs = observations[i];
+    for (int j = 0; j < observations.size(); ++j) {
+      LandmarkObs obs = observations[j];
       double x = obs.x;
       double y = obs.y;
-      int id_i = obs.id;
-      associations.push_back(id_i);
+      int id_j = obs.id;
+      associations.push_back(id_j);
       sense_x.push_back(x);
       sense_y.push_back(y);
       
-      float mu_x = map_landmarks.landmark_list[id_i-1].x_f; //id starts from 1
-      float mu_y = map_landmarks.landmark_list[id_i-1].y_f;
+      bool found_landmark = false;
+      LandmarkObs landmark;
+      for (int k = 0; k < candidate_landmarks.size(); ++k) {
+        if (candidate_landmarks[k].id == id_j) {
+          landmark = candidate_landmarks[k];
+          found_landmark = true;
+          break;
+        }
+      }
+      
+      if (!found_landmark) {
+        log_p = std::numeric_limits<double>::min();
+        break;
+      }
+      
+      double mu_x = landmark.x;
+      double mu_y = landmark.y;
       double diff_x = x-mu_x;
       double diff_y = y-mu_y;
       log_p += -(diff_x*diff_x/(2.*sig_x*sig_x) + diff_y*diff_y/(2.*sig_y*sig_y))
