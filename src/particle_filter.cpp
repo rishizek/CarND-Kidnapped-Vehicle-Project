@@ -61,15 +61,14 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
   
   double x, y, yaw;
   default_random_engine gen;
+  //add noise
+  normal_distribution<double> dist_x(0.0, std_pos[0]);
+  normal_distribution<double> dist_y(0.0, std_pos[1]);
+  normal_distribution<double> dist_theta(0.0, std_pos[2]);
   for (int i = 0; i < num_particles; ++i) {
     x = particles[i].x;
     y = particles[i].y;
     yaw = particles[i].theta;
-    //add noise
-    normal_distribution<double> dist_x(0.0, std_pos[0]);
-    normal_distribution<double> dist_y(0.0, std_pos[1]);
-    normal_distribution<double> dist_theta(0.0, std_pos[2]);
-
     //avoid division by zero
     if (fabs(yaw_rate) > 0.001) {
       x += velocity/yaw_rate * (sin(yaw + yaw_rate*delta_t) - sin(yaw)) + dist_x(gen);
@@ -80,8 +79,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     }
     
     yaw += yaw_rate*delta_t + dist_theta(gen);
-    while (yaw >  M_PI) yaw -= 2.*M_PI;
-    while (yaw < -M_PI) yaw += 2.*M_PI;
     
     //write predicted position to each particle
     particles[i].x = x;
