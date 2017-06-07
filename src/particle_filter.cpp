@@ -66,9 +66,9 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     y = particles[i].y;
     yaw = particles[i].theta;
     //add noise
-    normal_distribution<double> dist_x(x, std_pos[0]);
-    normal_distribution<double> dist_y(y, std_pos[1]);
-    normal_distribution<double> dist_theta(yaw, std_pos[2]);
+    normal_distribution<double> dist_x(0.0, std_pos[0]);
+    normal_distribution<double> dist_y(0.0, std_pos[1]);
+    normal_distribution<double> dist_theta(0.0, std_pos[2]);
 
     //avoid division by zero
     if (fabs(yaw_rate) > 0.001) {
