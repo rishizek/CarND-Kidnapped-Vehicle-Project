@@ -95,7 +95,21 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
-
+  double x_o, y_o, x_p, y_p, dist_pred;
+  for (int i = 0; i < observations.size(); ++i) {
+    double min_dist = std::numeric_limits<double>::max();
+    x_o = observations[i].x;
+    y_o = observations[i].y;
+    for (int j = 0; j < predicted.size(); ++j) {
+      x_p = predicted[j].x;
+      y_p = predicted[j].y;
+      dist_pred = dist(x_o, y_o, x_p, y_p);
+      if (dist_pred < min_dist) {
+        observations[i].id = predicted[j].id;
+        min_dist = dist_pred;
+      }
+    }
+  }
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -110,6 +124,74 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+
+  double x_p, y_p, yaw_p;
+  for (int i = 0; i < num_particles; ++i) {
+    x_p = particles[i].x;
+    y_p = particles[i].y;
+    yaw_p = particles[i].theta;
+    
+    double x_o, y_o;
+    double x_m, y_m;
+    vector<LandmarkObs> landmarks;
+    for (int i = 0; i < observations.size(); ++i) {
+      x_o = observations[i].x;
+      y_o = observations[i].y;
+      //transform each observation marker from the particle's coordinates to the map's coordinates
+      x_m = x_p + x_o * cos(yaw_p) - y_o * sin(yaw_p);
+      y_m = y_p + x_o * sin(yaw_p) + y_o * cos(yaw_p);
+      
+      //select landmarks that are in sensor_range
+      for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
+        int id_i = map_landmarks.landmark_list[j].id_i;
+        float x_f = map_landmarks.landmark_list[j].x_f;
+        float y_f = map_landmarks.landmark_list[j].y_f;
+        if (dist(x_m, y_m, x_f, y_f) <= sensor_range) {
+          LandmarkObs landmark;
+          landmark.id = id_i;
+          landmark.x = x_f;
+          landmark.y = y_f;
+          landmarks.push_back(landmark);
+        }
+      }
+      observations[i].x = x_m;
+      observations[i].y = y_m;
+    }
+    
+    dataAssociation(landmarks, observations);
+    // update weights
+    // The particles final weight will be calculated as the product of each measurement's Multivariate-Gaussian probability.
+    double prob;
+    double log_p = 0.0;
+    double sig_x = std_landmark[0];
+    double sig_y = std_landmark[1];
+    vector<int> associations;
+    vector<double> sense_x;
+    vector<double> sense_y;
+    for (int i = 0; i < observations.size(); ++i) {
+      LandmarkObs obs = observations[i];
+      double x = obs.x;
+      double y = obs.y;
+      int id_i = obs.id;
+      associations.push_back(id_i);
+      sense_x.push_back(x);
+      sense_y.push_back(y);
+      
+      float mu_x = map_landmarks.landmark_list[id_i-1].x_f; //id starts from 1
+      float mu_y = map_landmarks.landmark_list[id_i-1].y_f;
+      double diff_x = x-mu_x;
+      double diff_y = y-mu_y;
+      log_p += -(diff_x*diff_x/(2.*sig_x*sig_x) + diff_y*diff_y/(2.*sig_y*sig_y))
+               - log(2.*M_PI*sig_x*sig_y);
+    }
+    prob = exp(log_p);
+    particles[i].weight = prob;
+    particles[i] = SetAssociations(particles[i], associations, sense_x, sense_y);
+  }
+
+  for (int i = 0; i < num_particles; ++i) {
+    weights[i] = particles[i].weight; // no need for normalization
+  }
 }
 
 void ParticleFilter::resample() {
