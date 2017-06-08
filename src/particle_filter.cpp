@@ -130,14 +130,18 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     
     double x_o, y_o;
     double x_m, y_m;
+    vector<LandmarkObs> transformedObs;
     for (int j = 0; j < observations.size(); ++j) {
+      LandmarkObs tObs;
       x_o = observations[j].x;
       y_o = observations[j].y;
       //transform each observation marker from the particle's coordinates to the map's coordinates
       x_m = x_p + x_o * cos(yaw_p) - y_o * sin(yaw_p);
       y_m = y_p + x_o * sin(yaw_p) + y_o * cos(yaw_p);
-      observations[j].x = x_m;
-      observations[j].y = y_m;
+      tObs.x = x_m;
+      tObs.y = y_m;
+      tObs.id = observations[j].id;
+      transformedObs.push_back(tObs);
     }
 
     //select landmarks that are in sensor_range
@@ -155,7 +159,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       }
     }
     
-    dataAssociation(candidate_landmarks, observations);
+    dataAssociation(candidate_landmarks, transformedObs);
     // update weights
     // The particles final weight will be calculated as the product of each measurement's Multivariate-Gaussian probability.
     double prob;
@@ -165,8 +169,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     vector<int> associations;
     vector<double> sense_x;
     vector<double> sense_y;
-    for (int j = 0; j < observations.size(); ++j) {
-      LandmarkObs obs = observations[j];
+    for (int j = 0; j < transformedObs.size(); ++j) {
+      LandmarkObs obs = transformedObs[j];
       double x = obs.x;
       double y = obs.y;
       int id_j = obs.id;
